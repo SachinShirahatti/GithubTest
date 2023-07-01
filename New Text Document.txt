@@ -1,0 +1,18 @@
+Assignment 
+1.SDLC  (Software Development Life Cycle) and STLC  (Software testing Life Cycle)  
+
+2. Take  one C++ Book 
+3. Programming Language  -  Assignment 
+	a. Scripting Language  
+	b. OOPS Language - 
+4. C++ Ample of information available in Google - Reference Website
+	a. https://www.w3schools.com/cpp/
+	b. https://www.geeksforgeeks.org/c-plus-plus/
+	c. https://www.tutorialspoint.com/cplusplus/index.htm
+	d. https://www.javatpoint.com/cpp-tutorial
+5. Over all view of VS
+6. How To Create Project
+7. Today Create 5 Project , understand the 
+	a. Frame ,  folder structure 
+8. What is the difference Between .Exe and DLL
+9. W3 Schools Syntax to Data types

@@ -1,0 +1,277 @@
+CATIPrtContainer_var SurfaceFillDial::GetPartContainer()
+{
+	CATIPrtContainer_var spCatIPrtContainer = NULL_var;
+	CATFrmEditor *pCurrentEditor = CATFrmEditor::GetCurrentEditor();
+	if(NULL!= pCurrentEditor)
+	{
+		CATDocument *pCurrentDocument = pCurrentEditor->GetDocument();
+		if(NULL!=pCurrentDocument)
+		{
+			CATInit_var spCatInIt = pCurrentDocument;
+			if(!!spCatInIt)
+			{
+				spCatIPrtContainer = spCatInIt->GetRootContainer("CATIPrtContainer");
+
+			}
+		}
+	}
+	return spCatIPrtContainer;
+}
+
+
+void SurfaceFillDial::FillSurface()
+{
+	CATTry
+		{
+		CATIPrtContainer_var spPartContainer = 	GetPartContainer();
+		if(!spPartContainer)
+			return;
+		CATIGSMFactory_var spGsmFactory = spPartContainer;
+		if(!spGsmFactory)
+			return;
+
+		CATIDescendants_var spDescendants = spPartContainer->GetPart();
+		if(!spDescendants)
+			return;
+		CATListValCATISpecObject_var oLst ;
+		spDescendants->GetAllChildren("CATIMechanicalTool", oLst);
+		for(int i = 1; i <= oLst.Size(); ++i)
+		{
+			CATIAlias_var spAlias = oLst[i];
+			if(!!spAlias)
+			{
+				CATUnicodeString usName = spAlias->GetAlias();
+				CATIBodyRequest_var spBodyRequest = oLst[i];
+				if(!!spBodyRequest)
+				{
+					CATListValCATBaseUnknown_var  oResults;
+					spBodyRequest->GetResults("MfDefault3DView", oResults);
+					for(int j = 1; j <= oResults.Size(); ++j)
+					{
+						CATIAlias_var spAlias1 = oResults[j];
+						if(!!spAlias1)
+						{
+							CATUnicodeString usName = spAlias1->GetAlias();
+							CATIGeometricalElement_var spGeomElt = oResults[j];
+							if(!!spGeomElt)
+							{
+								CATBody_var spBody = spGeomElt->GetBodyResult();
+								CATLISTP(CATCell) listOfEdges;
+								spBody->GetAllCells(listOfEdges, 1);
+
+								CATLISTV(CATISpecObject_var) *iEdgeList = new CATLISTV(CATISpecObject_var)();;
+								CATLISTV(CATISpecObject_var) *iEdgeSuppList = new CATLISTV(CATISpecObject_var)();
+                                CATLISTP(CATCell) listOfCompletedEdges;
+								for(int k = 1; k <= listOfEdges.Size(); ++k)
+								{
+									if(listOfCompletedEdges.Locate(listOfEdges[k]) > 0)
+										continue;
+									CATEdge *pEdge = (CATEdge*)listOfEdges[k];
+									if(NULL == pEdge)
+										continue;
+									CATMathPoint mpStartPt, mpEndPt, mpStartPtSecond, mpEndPtSecond;
+									GetPointsFromEdge(pEdge, mpStartPt,mpEndPt);
+									CATLISTP(CATMathPoint) listOFMathPoints = TPACommonUtilityClass::GetObject()->CellTessellation(pEdge);
+									
+									if(listOFMathPoints.Size() > 2)
+									{
+										bool bIsCircle = IsCircularArc(pEdge);
+										if(true == bIsCircle)
+										{
+											for(int m = 1; m <= listOfEdges.Size(); ++m)
+											{
+												if(k == m)
+													continue;
+												if(listOfEdges[k]->GetPersistentTag() == listOfEdges[m]->GetPersistentTag())
+													continue;
+									            GetPointsFromEdge((CATEdge*)listOfEdges[m], mpStartPtSecond,mpEndPtSecond);
+												double dDist1 = mpStartPt.DistanceTo(mpStartPtSecond);
+												double dDist2 = mpStartPt.DistanceTo(mpEndPtSecond);
+												double dDist3 = mpEndPt.DistanceTo(mpStartPtSecond);
+												double dDist4 = mpEndPt.DistanceTo(mpEndPtSecond);
+												if((dDist1 == 0.00 && dDist3 == 0.00) || (dDist2 == 0.0 && dDist4 == 0.0) ||
+													(dDist1 == 0.00 && dDist4 == 0.00) || (dDist2 == 0.0 && dDist3 == 0.0))
+												{
+													listOfCompletedEdges.Append(listOfEdges[m]);
+													CATISpecObject_var ospFirstEdgeFEa, opSecondEdgeFea;
+											        FeaturizeTopologicalObject(listOfEdges[k],spBody,ospFirstEdgeFEa);
+											        //FeaturizeTopologicalObject(listOfEdges[m],spBody,opSecondEdgeFea);
+
+											        CATLISTV(CATISpecObject_var) listOfBoundaries;
+											        CATLISTV(CATISpecObject_var) listOFSupports;
+													listOfBoundaries.Append(ospFirstEdgeFEa);
+													//listOfBoundaries.Append(opSecondEdgeFea);
+													listOFSupports.Append(NULL_var);
+													//listOFSupports.Append(NULL_var);
+
+											        //CATIGSMFill_var spFill = spGsmFactory->CreateFill(*iEdgeList,*iEdgeSuppList,CATGSMContinuity_Point);
+													CATIGSMFill_var spFill = spGsmFactory->CreateFill(listOfBoundaries, listOFSupports, CATGSMContinuity_Point);
+											        CATIGSMProceduralView_var spGSMProcView = spFill;
+
+											if(!!spGSMProcView)
+											{
+												spGSMProcView->InsertInProceduralView();
+												spPartContainer->GetPart()->Update();
+												iEdgeList->RemoveAll();
+											}	
+												}
+												
+											}
+										}
+										double dArcLength = pEdge->CalcLength();
+										int iIndex = m_VerticesList.Locate(dArcLength);
+										if(iIndex == 0)
+										{
+											m_VerticesList.Append(dArcLength);											
+										}
+
+									}
+
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+	}
+	
+	CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+}
+
+
+void SurfaceFillDial::FeaturizeTopologicalObject(CATCell *ipEdge, CATBody_var &ispBody, CATISpecObject_var &ospSpecObject)
+{
+	CATTry
+	{
+		if (NULL == ipEdge || !ispBody)
+			return;
+		CATIBRepAccess_var spBrepAccess = CATBRepDecodeCellInBody(ipEdge, ispBody);
+		if (!spBrepAccess)
+			return;
+		CATIFeaturize_var spFeaturize = spBrepAccess;
+		if (!spFeaturize)
+			return;
+		CATISpecObject_var spEdgeSpecObject = spFeaturize->FeaturizeR(MfNoDuplicateFeature
+																	  | MfDuplicateFeature
+																	  | MfInitialFeatureSupport
+																	  | MfSelectingFeatureSupport
+																	  | MfLastFeatureSupport
+																	  | MfTemporaryBody
+																	  | MfPermanentBody
+																	  | MfFeaturizeIntersection
+																	  | MfFeaturizeC1Intersection);
+		ospSpecObject = spEdgeSpecObject;
+	}
+		CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+
+}
+
+bool SurfaceFillDial::IsItCircle(CATLISTP(CATMathPoint) listOfPts)
+{
+	bool bIsCircle = true;
+	CATTry
+	{
+		double dX;
+		double dY;
+		double dZ;
+		CATMathPoint mpCenterPoint;
+		for(int i = 1; i <= listOfPts.Size(); ++i)
+		{
+			dX = dX + (*listOfPts[i]).GetX();
+			dY = dY + (*listOfPts[i]).GetY();
+			dZ = dZ + (*listOfPts[i]).GetZ();
+
+			mpCenterPoint = mpCenterPoint + (*listOfPts[i]);
+		}
+		mpCenterPoint = mpCenterPoint / listOfPts.Size();
+		CATListOfDouble listOFLenghts;
+		for(int i = 1; i <= listOfPts.Size(); ++i)
+		{
+			double dDist = mpCenterPoint.DistanceTo(*listOfPts[i]);
+			listOFLenghts.Append(dDist);
+		}
+		int nn = 1;
+	}
+	CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+	return bIsCircle;
+}
+void SurfaceFillDial::GetPointsFromEdge(CATEdge *ipEdge, CATMathPoint &mpFirstPoint, CATMathPoint &mpSecondPoint)
+{
+	CATTry
+	{
+		if (NULL == ipEdge)
+			return;
+		CATVertex *pStartPt = NULL;
+		CATVertex *pEndPt = NULL;
+		ipEdge->GetVertices(&pStartPt, &pEndPt);
+		if (NULL == pStartPt || NULL == pEndPt)
+			return;
+		CATPoint *pPoint1 = pStartPt->GetPoint();
+		CATPoint *pPoint2 = pEndPt->GetPoint();
+		if (NULL == pPoint1 || NULL == pPoint2)
+			return;
+		CATMathPoint point1(pPoint1->GetX(), pPoint1->GetY(), pPoint1->GetZ());
+		CATMathPoint point2(pPoint2->GetX(), pPoint2->GetY(), pPoint2->GetZ());
+		mpFirstPoint = point1;
+		mpSecondPoint = point2;
+	}
+	CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+}
+bool SurfaceFillDial::IsCircularArc(CATEdge *ipEdge)
+{
+	bool bIsSurcular = false;
+	CATTry
+	{
+		CATLISTP(CATMathPoint) listOfPts = TPACommonUtilityClass::GetObject()->CellTessellation(ipEdge);//= CellTessellation(ipEdge);
+		CATMathPoint mpCenterPoint;
+		
+		CATMathPoint mpStartPt, mpEndPt;
+		GetPointsFromEdge(ipEdge, mpStartPt, mpEndPt);
+		mpCenterPoint = (mpStartPt + mpEndPt) / 2;
+		CATListOfDouble listOfDistances;
+		for (int i = 1; i <= listOfPts.Size(); i++)
+		{
+			double dDist = mpCenterPoint.DistanceTo(*listOfPts[i]);
+			listOfDistances.Append(RoundToSingleDecimal(dDist));
+		}
+		listOfDistances.RemoveDuplicates();
+		if (listOfDistances.Size() == 1)
+		{
+			return true;
+		}
+	}
+	CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+	return bIsSurcular;
+}
+double SurfaceFillDial::RoundToSingleDecimal(double var)
+{
+	double dValue = 0.00;
+	CATTry
+	{
+		double value = (int)(var * 10 + .5);
+		dValue = value;
+	}
+	CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+	return (double)dValue / 10;
+}
+

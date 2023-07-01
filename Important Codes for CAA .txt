@@ -1,0 +1,74 @@
+bool IsCircularArc(CATEdge *ipEdge)
+{
+	bool bIsSurcular = false;
+	CATTry
+	{
+		CATLISTP(CATMathPoint) listOfPts = CellTessellation(ipEdge);
+		CATMathPoint mpCenterPoint;
+		/*for (int i = 1; i <= listOfPts.Size(); i++)
+		{
+			mpCenterPoint += (*listOfPts[i]);
+		}
+		mpCenterPoint = mpCenterPoint / listOfPts.Size();*/
+		CATMathPoint mpStartPt, mpEndPt;
+		GetPointsFromEdge(ipEdge, mpStartPt, mpEndPt);
+		mpCenterPoint = (mpStartPt + mpEndPt) / 2;
+		CATListOfDouble listOfDistances;
+		for (int i = 1; i <= listOfPts.Size(); i++)
+		{
+			double dDist = mpCenterPoint.DistanceTo(*listOfPts[i]);
+			listOfDistances.Append(RoundToSingleDecimal(dDist));
+		}
+		listOfDistances.RemoveDuplicates();
+		if (listOfDistances.Size() == 1)
+		{
+			return true;
+		}
+	}
+	CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+	return bIsSurcular;
+}
+
+double RoundToSingleDecimal(double var)
+{
+	double dValue = 0.00;
+	CATTry
+	{
+		double value = (int)(var * 10 + .5);
+		dValue = value;
+	}
+		CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+	return (double)dValue / 10;
+}
+
+void GetPointsFromEdge(CATEdge *ipEdge, CATMathPoint &mpFirstPoint, CATMathPoint &mpSecondPoint)
+{
+	CATTry
+	{
+		if (NULL == ipEdge)
+			return;
+		CATVertex *pStartPt = NULL;
+		CATVertex *pEndPt = NULL;
+		ipEdge->GetVertices(&pStartPt, &pEndPt);
+		if (NULL == pStartPt || NULL == pEndPt)
+			return;
+		CATPoint *pPoint1 = pStartPt->GetPoint();
+		CATPoint *pPoint2 = pEndPt->GetPoint();
+		if (NULL == pPoint1 || NULL == pPoint2)
+			return;
+		CATMathPoint point1(pPoint1->GetX(), pPoint1->GetY(), pPoint1->GetZ());
+		CATMathPoint point2(pPoint2->GetX(), pPoint2->GetY(), pPoint2->GetZ());
+		mpFirstPoint = point1;
+		mpSecondPoint = point2;
+	}
+		CATCatch(CATError, pError)
+	{
+	}
+	CATEndTry;
+}

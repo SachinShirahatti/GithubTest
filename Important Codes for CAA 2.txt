@@ -1,0 +1,75 @@
+//Important Codes Need to Know
+
+1. Cloaning
+//Cloaning: Duplicating of the product for Product workbench.
+/*CATCloneManager * pCloneManager= new CATCloneManager(piGeomFactory);//piGeomFactory is Geo Factory Object
+	if(NULL == pCloneManager)
+		continue;
+	pCloneManager->Add(spBody);				//spBody is the CATBody 
+	pCloneManager->Run();
+	CATICGMObject_var spCGMObj = spBody;
+	CATBody *pCloneBody = (CATBody*)pCloneManager->ReadImage(spCGMObj);
+	delete pCloneManager;	//c++ way to delete or remove the clone manager
+	pCloneManager = NULL;	//assign null after deleting the clone manager
+	if(NULL == pCloneBody)
+		continue;
+		
+	// duplication of non-invariant objects by default
+	CATTransfoManager * pTransfoManager = new CATTransfoManager(mathTransf,piGeomFactory); 
+	if (NULL==pTransfoManager)
+	{
+		::CATCloseCGMContainer(piGeomFactory);
+		return;
+	}
+	// Asks for the transformation of piPLine
+	pTransfoManager->Add(pCloneBody);
+	// Runs the operator
+	pTransfoManager->Run();
+	// Retrieves the object corresponding to the transformation of the PLine
+	CATICGMObject* piTransfBody=NULL;
+	piTransfBody = pTransfoManager->ReadImage(pCloneBody);
+	
+	
+2. TransfoManager
+	CATTransfoManager *pTransfoManger = new CATTransfoManager(omtProduct, pGeoFactory, CATTransfoManager::CATTransfoManagerType::Replace);
+	pTransfoManger->Add(spCATBody);
+	pTransfoManger->Run();
+	CATBody_var spTransfoBody = pTransfoManger->ReadImage(spCATBody);
+	if(!spTransfoBody)
+		continue;
+	delete pTransfoManger;
+	pTransfoManger = NULL;
+	
+3. Viewer and Representation
+//Create objects for Viewer and 3DBagRep
+
+	CATViewer *m_pViewer;
+	CAT3DBagRep *m_p3DBagRep;
+	// in Constructor
+	m_pViewer = NULL;
+	m_p3DBagRep = NULL;
+	
+	// in Distructor
+	if(NULL != m_pViewer && NULL != m_p3DBagRep)
+	{
+		m_pViewer->RemoveRep(m_p3DBagRep);
+		m_pViewer->Draw();
+	}
+	m_pViewer = NULL;
+	m_p3DBagRep = NULL;
+	
+	p3DBagRep = new CAT3DBagRep();
+	CATI3DGeoVisu_var spGeoVisu = piTransfBody;// spBody;//piTransfBody;
+	if(!!spGeoVisu)
+	{
+		CATRep *pRep = spGeoVisu->BuildRep();
+		if(NULL != pRep)
+		{
+			pRep->SetInheritanceMode(COLOR_INHERITANCE);
+			pRep->GetGraphicAttributeSet().SetColor(YELLOW);
+			m_p3DBagRep->AddChild(*pRep);
+		}
+	}
+	pView = CATFrmLayout::GetCurrentLayout()->GetCurrentWindow()->GetViewer();
+	pView->AddRep(p3DBagRep);
+	pView->Draw();
